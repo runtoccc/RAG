@@ -1,0 +1,27 @@
+# Python/runtime cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local secrets
+.env
+
+# OS/editor noise
+.DS_Store
+.vscode/
+.idea/
+
+# Local data and generated indexes
+data/papers/*.pdf
+data/vector_db/*
+!data/vector_db/.gitkeep
+!data/vector_db/README.md
+
+# Local model weights and caches
+models/*
+!models/README.md
+
+# Backups and ad-hoc exports
+backup/
+*.bak
+*.tmp

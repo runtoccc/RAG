@@ -1,0 +1,27 @@
+paths:
+  papers_dir: data/papers
+  chroma_dir: data/vector_db/chroma
+  kg_dir: kg
+
+chunking:
+  chunk_size: 1000
+  chunk_overlap: 200
+
+retrieval:
+  top_k: 5
+
+embedding:
+  provider: sentence_transformers
+  model: intfloat/multilingual-e5-small
+  local_dir: models/embedding/intfloat-multilingual-e5-small
+  cache_dir: models/embedding/cache
+  normalize_embeddings: true
+  batch_size: 64
+
+llm:
+  provider: deepseek
+  model: deepseek-v4-flash
+  base_url: https://api.deepseek.com
+  api_key_env: DEEPSEEK_API_KEY
+  temperature: 0.2
+  max_tokens: 2048

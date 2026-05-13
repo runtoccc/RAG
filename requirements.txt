@@ -1,0 +1,11 @@
+pypdf
+langchain
+langchain-community
+langchain-chroma
+chromadb # Vector storage
+pytest
+boto3
+pyyaml
+openai
+sentence-transformers
+streamlit
