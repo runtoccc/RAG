@@ -9,3 +9,11 @@ pyyaml
 openai
 sentence-transformers
 streamlit
+networkx
+pandas
+numpy
+pydantic
+typer
+tqdm
+rapidfuzz
+jsonlines

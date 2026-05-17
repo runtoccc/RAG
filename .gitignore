@@ -17,6 +17,7 @@ data/interim/
 data/structured/
 data/clean/
 data/passages/
+data/agent/
 data/vector_db/*
 !data/vector_db/.gitkeep
 !data/vector_db/README.md
