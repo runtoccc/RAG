@@ -11,25 +11,9 @@ __pycache__/
 .vscode/
 .idea/
 
-# Local data and generated indexes
+# Local data and generated autoSKG outputs
 data/papers/*.pdf
-data/interim/
-data/structured/
-data/clean/
-data/passages/
-data/agent/
-data/vector_db/*
-!data/vector_db/.gitkeep
-!data/vector_db/README.md
-data/resources/*
-!data/resources/README.md
-
-# Generated reports and local outputs
-outputs/
-
-# Local model weights and caches
-models/*
-!models/README.md
+data/autoskg/
 
 # Backups and ad-hoc exports
 backup/

@@ -1,23 +1,5 @@
 paths:
   papers_dir: data/papers
-  passages_jsonl: data/passages/scientific_passages.jsonl
-  chroma_dir: data/vector_db/chroma
-  kg_dir: kg
-
-chunking:
-  chunk_size: 1000
-  chunk_overlap: 200
-
-retrieval:
-  top_k: 5
-
-embedding:
-  provider: sentence_transformers
-  model: intfloat/multilingual-e5-small
-  local_dir: models/embedding/intfloat-multilingual-e5-small
-  cache_dir: models/embedding/cache
-  normalize_embeddings: true
-  batch_size: 64
 
 llm:
   provider: deepseek
@@ -26,3 +8,17 @@ llm:
   api_key_env: DEEPSEEK_API_KEY
   temperature: 0.2
   max_tokens: 2048
+
+autoskg:
+  root_dir: data/autoskg/kg_project
+  input_dir: data/papers
+  tei_dir: data/autoskg/tei
+  grobid_url: http://localhost:8070/api/processFulltextDocument
+  prefer_existing_tei: true
+  license_policy: allow_all
+  unpaywall_email: ai@plantscience.ai
+  llm_model: deepseek-v4-flash
+  llm_base_url: https://api.deepseek.com
+  llm_api_key_env: DEEPSEEK_API_KEY
+  llm_temperature: 0.2
+  llm_max_tokens: 2048

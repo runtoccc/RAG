@@ -1,0 +1,147 @@
+encoding_model: cl100k_base
+api_proxy: ${DEEPSEEK_BASE_URL}
+
+models:
+  default_chat_model:
+    type: openai_chat
+    api_key: ${DEEPSEEK_API_KEY}
+    api_base: ${DEEPSEEK_BASE_URL}
+    api_proxy: ${DEEPSEEK_BASE_URL}
+    proxy: ${DEEPSEEK_BASE_URL}
+    model: ${DEEPSEEK_MODEL}
+    model_supports_json: true
+
+  default_embedding_model:
+    type: openai_embedding
+    api_key: ${DEEPSEEK_API_KEY}
+    api_base: ${DEEPSEEK_BASE_URL}
+    api_proxy: ${DEEPSEEK_BASE_URL}
+    proxy: ${DEEPSEEK_BASE_URL}
+    model: text-embedding-3-small
+
+llm:
+  api_key: ${DEEPSEEK_API_KEY}
+  api_base: ${DEEPSEEK_BASE_URL}
+  api_proxy: ${DEEPSEEK_BASE_URL}
+  proxy: ${DEEPSEEK_BASE_URL}
+  type: openai_chat
+  model: ${DEEPSEEK_MODEL}
+  model_supports_json: true
+
+parallelization:
+  stagger: 0.3
+
+async_mode: threaded
+
+embeddings:
+  async_mode: threaded
+  vector_store:
+    type: lancedb
+    db_uri: "output/lancedb"
+    container_name: default
+    overwrite: true
+  llm:
+    api_key: ${DEEPSEEK_API_KEY}
+    api_base: ${DEEPSEEK_BASE_URL}
+    api_proxy: ${DEEPSEEK_BASE_URL}
+    proxy: ${DEEPSEEK_BASE_URL}
+    type: openai_embedding
+    model: text-embedding-3-small
+
+input:
+  type: file
+  file_type: text
+  base_dir: "input"
+  file_encoding: utf-8
+  file_pattern: ".*\\.txt$$"
+
+chunks:
+  size: 1500
+  overlap: 200
+  group_by_columns: [id]
+
+cache:
+  type: file
+  base_dir: "cache"
+
+reporting:
+  type: file
+  base_dir: "logs"
+
+storage:
+  type: file
+  base_dir: "output"
+
+update_index_storage:
+
+workflows: [
+  "create_base_text_units",
+  "create_final_documents",
+  "extract_graph",
+  "create_final_entities",
+  "create_final_relationships",
+  "create_final_nodes",
+  "create_final_text_units",
+]
+
+skip_workflows:
+  - compute_communities
+  - create_final_nodes
+  - generate_text_embeddings
+  - create_final_community_reports
+  - create_final_communities
+
+entity_extraction:
+  prompt: "prompts/entity_extraction.txt"
+  entity_types:
+    [
+      "Taxon",
+      "Fish Species",
+      "Aquatic Organism",
+      "Anatomical Entity",
+      "Cellular Component",
+      "Gene",
+      "Transcript",
+      "Protein",
+      "Regulatory Element",
+      "Genetic Variant",
+      "Chemical Entity",
+      "Molecular Function",
+      "Pathway",
+      "Biological Process",
+      "Phenotype",
+      "Disease/Disorder",
+      "Stress Condition",
+      "Ecological Interaction",
+      "Environmental Factor",
+      "Habitat/Ecosystem",
+      "Aquaculture Practice",
+      "Resource",
+      "Experiment/Study",
+      "Publication",
+      "Data/Measurement",
+      "Molecular Complex",
+      "Tool/Instrument",
+    ]
+  max_gleanings: 1
+
+summarize_descriptions:
+  prompt: "prompts/summarize_descriptions.txt"
+  max_length: 500
+
+claim_extraction:
+  enabled: false
+  prompt: "prompts/claim_extraction.txt"
+  description: "Any claims or facts that could be relevant to information discovery."
+  max_gleanings: 1
+
+local_search:
+  prompt: "prompts/local_search_system_prompt.txt"
+
+global_search:
+  map_prompt: "prompts/global_search_map_system_prompt.txt"
+  reduce_prompt: "prompts/global_search_reduce_system_prompt.txt"
+  knowledge_prompt: "prompts/global_search_knowledge_system_prompt.txt"
+
+drift_search:
+  prompt: "prompts/drift_search_system_prompt.txt"
