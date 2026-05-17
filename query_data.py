@@ -242,6 +242,7 @@ def format_cited_sources(results) -> list[dict[str, Any]]:
         cited_sources.append(
             {
                 "pdf_file": metadata.get("source_file"),
+                "source_file": metadata.get("source_file"),
                 "page_number": metadata.get("page_number"),
                 "chunk_id": metadata.get("chunk_id") or metadata.get("id"),
                 "paper_id": metadata.get("paper_id"),
@@ -250,6 +251,7 @@ def format_cited_sources(results) -> list[dict[str, Any]]:
                 "year": metadata.get("year"),
                 "journal": metadata.get("journal"),
                 "section": metadata.get("section"),
+                "is_reference_section": metadata.get("is_reference_section", False),
                 "retrieval_method": metadata.get("retrieval_method", "vector"),
                 "score": score,
                 "snippet": make_snippet(doc.page_content),
@@ -537,6 +539,7 @@ def format_hybrid_cited_sources(
         cited_sources.append(
             {
                 "pdf_file": metadata.get("source_file"),
+                "source_file": metadata.get("source_file"),
                 "page_number": metadata.get("page_number"),
                 "chunk_id": metadata.get("chunk_id") or metadata.get("id"),
                 "paper_id": metadata.get("paper_id"),
@@ -545,6 +548,7 @@ def format_hybrid_cited_sources(
                 "year": metadata.get("year"),
                 "journal": metadata.get("journal"),
                 "section": metadata.get("section"),
+                "is_reference_section": metadata.get("is_reference_section", False),
                 "retrieval_method": "+".join(sorted(candidate.methods)) or "vector",
                 "score": candidate.score,
                 "vector_score": candidate.vector_score,
@@ -572,10 +576,21 @@ def unique_keep_order(values: list[str]) -> list[str]:
 
 
 def make_snippet(text: str, max_chars: int = 700) -> str:
-    compact_text = " ".join(text.split())
+    compact_text = " ".join(extract_display_snippet(text).split())
     if len(compact_text) <= max_chars:
         return compact_text
     return compact_text[: max_chars - 3].rstrip() + "..."
+
+
+def extract_display_snippet(page_content: str) -> str:
+    match = re.search(r"(?s)^Title: .+?\nSection: .+?\nPage: .+?\nText: (.*)$", page_content or "")
+    if match:
+        return match.group(1).strip()
+    if "\n\n" in (page_content or ""):
+        title, text = page_content.split("\n\n", 1)
+        if title.strip() and text.strip():
+            return text.strip()
+    return page_content or ""
 
 
 if __name__ == "__main__":

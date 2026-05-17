@@ -1,5 +1,6 @@
 paths:
   papers_dir: data/papers
+  passages_jsonl: data/passages/scientific_passages.jsonl
   chroma_dir: data/vector_db/chroma
   kg_dir: kg
 

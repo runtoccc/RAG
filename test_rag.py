@@ -1,104 +1,111 @@
 from langchain_core.documents import Document
 
-from populate_database import calculate_chunk_ids, clean_text, make_paper_id, split_documents
+from populate_database import (
+    normalize_passage_text,
+    scientific_passage_record_to_document,
+)
 from query_data import (
     RetrievalCandidate,
     expand_query,
+    extract_display_snippet,
     format_cited_sources,
     format_hybrid_cited_sources,
     keyword_search,
 )
+from scripts.check_passage_quality import calculate_passage_quality_stats
 
 
-def test_clean_text_removes_pdf_line_noise():
-    raw_text = "DNA methyla-\n tion   changes\n\n\nin Nile tilapia"
-    assert clean_text(raw_text) == "DNA methylation changes\n\nin Nile tilapia"
+def test_scientific_passage_record_becomes_chroma_document():
+    record = {
+        "passage_id": "local_000001::block::0000",
+        "paper_id": "local_000001",
+        "title": "Zebrafish methylation",
+        "block_index": 0,
+        "block_words": 5,
+        "text": "DNA methylation evidence in zebrafish.",
+        "embedding_text": "Zebrafish methylation\n\nDNA methylation evidence in zebrafish.",
+        "source_file": "zebrafish.pdf",
+        "page": None,
+        "doi": "10.123/example",
+        "chunk_style": "openscholar_256w_title_prefix",
+        "section_title": None,
+        "section_type": None,
+    }
+
+    document = scientific_passage_record_to_document(record)
+
+    assert document.metadata["chunk_id"] == "local_000001::block::0000"
+    assert document.metadata["paper_id"] == "local_000001"
+    assert document.metadata["title"] == "Zebrafish methylation"
+    assert document.metadata["section"] == ""
+    assert document.metadata["section_type"] == ""
+    assert document.metadata["block_index"] == 0
+    assert document.metadata["block_words"] == 5
+    assert document.metadata["chunk_style"] == "openscholar_256w_title_prefix"
+    assert document.metadata["source_file"] == "zebrafish.pdf"
+    assert document.metadata["page_number"] == "unknown"
+    assert document.metadata["doi"] == "10.123/example"
+    assert document.metadata["chunk_source"] == "scientific_passages_jsonl"
+    assert document.page_content == "Zebrafish methylation\n\nDNA methylation evidence in zebrafish."
 
 
-def test_split_documents_adds_required_fish_literature_metadata():
-    documents = [
-        Document(
-            page_content=(
-                "Fish growth and aquaculture epigenetics are discussed in this paper. "
-                * 20
-            ),
-            metadata={
-                "source": "data/papers/Nile tilapia growth.pdf",
-                "source_file": "Nile tilapia growth.pdf",
-                "page_number": 3,
-                "paper_id": make_paper_id("Nile tilapia growth.pdf"),
-            },
-        )
-    ]
-    config = {"chunking": {"chunk_size": 120, "chunk_overlap": 20}}
-
-    chunks = split_documents(documents, config)
-
-    assert len(chunks) > 1
-    for chunk in chunks:
-        assert chunk.metadata["source_file"] == "Nile tilapia growth.pdf"
-        assert chunk.metadata["page_number"] == 3
-        assert chunk.metadata["paper_id"] == "nile-tilapia-growth"
-        assert chunk.metadata["chunk_id"].startswith("nile-tilapia-growth:p3:c")
-
-
-def test_calculate_chunk_ids_resets_for_each_page():
-    chunks = calculate_chunk_ids(
-        [
-            Document(
-                page_content="a",
-                metadata={
-                    "source_file": "paper.pdf",
-                    "page_number": 1,
-                    "paper_id": "paper",
-                },
-            ),
-            Document(
-                page_content="b",
-                metadata={
-                    "source_file": "paper.pdf",
-                    "page_number": 1,
-                    "paper_id": "paper",
-                },
-            ),
-            Document(
-                page_content="c",
-                metadata={
-                    "source_file": "paper.pdf",
-                    "page_number": 2,
-                    "paper_id": "paper",
-                },
-            ),
-        ]
-    )
-
-    assert [chunk.metadata["chunk_id"] for chunk in chunks] == [
-        "paper:p1:c0",
-        "paper:p1:c1",
-        "paper:p2:c0",
-    ]
+def test_normalize_passage_text_keeps_paragraph_breaks():
+    raw_text = "DNA methylation   changes\n\n\nin Nile tilapia"
+    assert normalize_passage_text(raw_text) == "DNA methylation changes\n\nin Nile tilapia"
 
 
 def test_format_cited_sources_returns_pdf_page_chunk_and_snippet():
     document = Document(
-        page_content=" ".join(["zebrafish methylation evidence"] * 80),
+        page_content=(
+            "Title: zebrafish methylation\n"
+            "Section: Results\n"
+            "Page: 5\n"
+            f"Text: {' '.join(['zebrafish methylation evidence'] * 80)}"
+        ),
         metadata={
             "source_file": "zebrafish.pdf",
             "page_number": 5,
             "chunk_id": "zebrafish:p5:c2",
             "paper_id": "zebrafish",
+            "title": "zebrafish methylation",
+            "section": "Results",
+            "is_reference_section": False,
         },
     )
     sources = format_cited_sources([(document, 0.123)])
 
     assert sources[0]["pdf_file"] == "zebrafish.pdf"
+    assert sources[0]["source_file"] == "zebrafish.pdf"
     assert sources[0]["page_number"] == 5
     assert sources[0]["chunk_id"] == "zebrafish:p5:c2"
+    assert sources[0]["title"] == "zebrafish methylation"
+    assert sources[0]["section"] == "Results"
+    assert sources[0]["is_reference_section"] is False
+    assert "Title:" not in sources[0]["snippet"]
+    assert "Section:" not in sources[0]["snippet"]
+    assert "Page:" not in sources[0]["snippet"]
     assert len(sources[0]["snippet"]) <= 700
 
 
+def test_extract_display_snippet_removes_scientific_passage_prefix():
+    page_content = (
+        "Title: annurev animal 021419 083634\n"
+        "Section: Results\n"
+        "Page: 14\n"
+        "Text: Dnmt1 maintenance methylation evidence."
+    )
+
+    assert extract_display_snippet(page_content) == "Dnmt1 maintenance methylation evidence."
+
+
+def test_extract_display_snippet_removes_openscholar_title_prefix():
+    page_content = "paper title\n\nDnmt1 maintenance methylation evidence."
+
+    assert extract_display_snippet(page_content) == "Dnmt1 maintenance methylation evidence."
+
+
 def test_expand_query_adds_dnmt_methylation_terms():
-    queries = expand_query("鱼类中 dnmt1、dnmt3a、dnmt3b 分别和哪些甲基化过程相关？")
+    queries = expand_query("fish dnmt1 dnmt3a dnmt3b methylation")
     expanded_text = " ".join(queries).lower()
 
     assert "maintenance dna methylation dnmt1" in expanded_text
@@ -145,6 +152,8 @@ def test_format_hybrid_cited_sources_includes_retrieval_details():
             "chunk_id": "annurev:p14:c4",
             "paper_id": "annurev",
             "section": "Epigenetics",
+            "title": "annurev animal 021419 083634",
+            "is_reference_section": False,
         },
     )
     candidate = RetrievalCandidate(
@@ -163,4 +172,54 @@ def test_format_hybrid_cited_sources_includes_retrieval_details():
     assert sources[0]["retrieval_method"] == "bm25+keyword+vector"
     assert sources[0]["score"] == 0.91
     assert sources[0]["section"] == "Epigenetics"
+    assert sources[0]["title"] == "annurev animal 021419 083634"
+    assert sources[0]["is_reference_section"] is False
     assert sources[0]["matched_terms"] == ["dnmt1", "maintenance"]
+
+
+def test_passage_quality_stats_detects_openscholar_format_errors():
+    passages = [
+        {
+            "passage_id": "paper-a::block::0000",
+            "paper_id": "paper-a",
+            "title": "paper a",
+            "block_words": 256,
+            "text": "fish methylation evidence",
+            "embedding_text": "paper a\n\nfish methylation evidence",
+            "chunk_style": "openscholar_256w_title_prefix",
+            "source_file": "paper-a.pdf",
+        },
+        {
+            "passage_id": "paper-a::block::0001",
+            "paper_id": "paper-a",
+            "title": "paper a",
+            "block_words": 70,
+            "text": "short final block",
+            "embedding_text": "paper a\n\nshort final block",
+            "chunk_style": "openscholar_256w_title_prefix",
+            "source_file": "paper-a.pdf",
+        },
+        {
+            "passage_id": "paper-b::section::0000",
+            "paper_id": "paper-b",
+            "title": "",
+            "block_words": 20,
+            "text": "bad block",
+            "embedding_text": "Section: bad\n\nbad block",
+            "chunk_style": "section_aware",
+            "source_file": "",
+        },
+    ]
+
+    stats = calculate_passage_quality_stats(passages)
+
+    assert stats["total_passages"] == 3
+    assert stats["count_blocks_eq_256"] == 1
+    assert stats["count_blocks_lt_64"] == 1
+    assert stats["has_section_in_embedding_text_count"] == 1
+    assert stats["title_prefix_valid_count"] == 2
+    assert stats["chunk_style_distribution"]["openscholar_256w_title_prefix"] == 2
+    assert stats["bad_passage_id_count"] == 1
+    assert stats["bad_chunk_style_count"] == 1
+    assert stats["missing_title_count"] == 1
+    assert stats["missing_source_file_count"] == 1

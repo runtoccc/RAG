@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -51,10 +52,12 @@ def get_vector_db_status(config: dict[str, Any] | None = None) -> dict[str, Any]
         documents = peek.get("documents") or []
         examples = []
         for index, metadata in enumerate(metadatas):
+            document = documents[index] if index < len(documents) else ""
             examples.append(
                 {
                     "metadata": metadata or {},
-                    "snippet": make_snippet(documents[index] if index < len(documents) else ""),
+                    "snippet": make_snippet(document),
+                    "page_content_preview": make_snippet(document, max_chars=300),
                 }
             )
         status["metadata_examples"] = examples
@@ -115,7 +118,21 @@ def format_command_output(result: dict[str, Any]) -> str:
 
 
 def make_snippet(text: str, max_chars: int = 500) -> str:
-    compact = " ".join((text or "").split())
+    compact = " ".join(extract_display_snippet(text).split())
     if len(compact) <= max_chars:
         return compact
     return compact[: max_chars - 3].rstrip() + "..."
+
+
+def extract_display_snippet(page_content: str) -> str:
+    match = re.search(
+        r"(?s)^Title: .+?\nSection: .+?\nPage: .+?\nText: (.*)$",
+        page_content or "",
+    )
+    if match:
+        return match.group(1).strip()
+    if "\n\n" in (page_content or ""):
+        title, text = page_content.split("\n\n", 1)
+        if title.strip() and text.strip():
+            return text.strip()
+    return page_content or ""

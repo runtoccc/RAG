@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
@@ -9,43 +8,32 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from populate_database import add_to_chroma, load_documents, split_documents
-from rag_config import load_config, project_path
+from populate_database import add_to_chroma, load_documents
+from rag_config import load_config
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Add newly collected weekly PDF papers to the RAG index."
+        description="Add scientific passages to the RAG index."
     )
     parser.add_argument(
         "--incoming-dir",
         type=str,
         default=None,
-        help="Optional folder containing new PDFs to copy into data/papers before indexing.",
+        help="Deprecated. Run the PDF-to-passage pipeline before indexing instead.",
     )
     args = parser.parse_args()
 
     config = load_config()
     if args.incoming_dir:
-        copy_new_pdfs(Path(args.incoming_dir), project_path(config["paths"]["papers_dir"]))
+        raise RuntimeError(
+            "--incoming-dir is no longer supported. Add PDFs to data/papers, "
+            "run scripts/01_parse_pdf_to_tei.py through scripts/04_build_scientific_passages.py, "
+            "then run this script."
+        )
 
-    documents = load_documents(config)
-    chunks = split_documents(documents, config)
+    chunks = load_documents(config)
     add_to_chroma(chunks, config)
-
-
-def copy_new_pdfs(incoming_dir: Path, papers_dir: Path) -> list[Path]:
-    papers_dir.mkdir(parents=True, exist_ok=True)
-    copied_files = []
-
-    for pdf_path in incoming_dir.glob("*.pdf"):
-        target = papers_dir / pdf_path.name
-        if not target.exists():
-            shutil.copy2(pdf_path, target)
-            copied_files.append(target)
-
-    print(f"Copied {len(copied_files)} new PDFs into {papers_dir}")
-    return copied_files
 
 
 if __name__ == "__main__":

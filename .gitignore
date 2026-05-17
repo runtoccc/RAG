@@ -13,9 +13,18 @@ __pycache__/
 
 # Local data and generated indexes
 data/papers/*.pdf
+data/interim/
+data/structured/
+data/clean/
+data/passages/
 data/vector_db/*
 !data/vector_db/.gitkeep
 !data/vector_db/README.md
+data/resources/*
+!data/resources/README.md
+
+# Generated reports and local outputs
+outputs/
 
 # Local model weights and caches
 models/*
